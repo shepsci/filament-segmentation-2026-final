@@ -1,5 +1,7 @@
 # Solar Filament Segmentation 2026 - shepsci
 
+PRIVATE REVIEW COPY. Publication requires completed owner review and explicit approval. Do not automatically publish at the deadline.
+
 Minimal reproducible final-solution release. Model weights are **stored in this Git
 repository using Git LFS**. The notebook SHA256-verifies the original PyTorch checkpoints.
 No private dependencies, external model source, cached answers or retraining is needed.
