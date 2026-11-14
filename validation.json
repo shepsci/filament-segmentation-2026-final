@@ -1,0 +1,16 @@
+{
+  "full_canonical_replay": true,
+  "matches_submitted_sha256": true,
+  "submission_id": 58351849,
+  "public_score": 0.4,
+  "receipt": {
+    "device": "mps",
+    "images_processed": 180,
+    "images_with_predictions": 178,
+    "rows": 1317,
+    "sha256": "9366a86c2632bee73b9c312b85cad061d1a7e64537d5b9250dbc1dc1b310624b",
+    "original_skip": false,
+    "method": "imgsz2048/conf0.5/boxIoU0/maxdet100/maskIoU0.5/native disjoint paint/minarea5"
+  },
+  "scope": "Full end-to-end inference with included SHA-verified weights, same frozen environment, all 180 official test images; no reference answers used by predictor"
+}

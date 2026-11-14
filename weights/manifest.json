@@ -1,0 +1,20 @@
+[
+  {
+    "filename": "yolo26x-seg-solar-filament-2048-1109.pt",
+    "bytes": 142289285,
+    "sha256": "c5c02daec7b04b78481a22ade2780d55cf99755c0865a6e8e1dff22eda5d7390",
+    "path": "weights/yolo26x-seg-solar-filament-2048-1109.pt",
+    "source": "hdjojo/yolo26x-seg-solar-filament/PyTorch/default/1",
+    "license": "Apache-2.0, declared by upstream model card",
+    "training_provenance": "Author declares 707 competition training observations only; complete training chain not independently rerun"
+  },
+  {
+    "filename": "yolov8x-seg-solar-filament-2048-1110.pt",
+    "bytes": 144463332,
+    "sha256": "ced0e12510abf8c53121ee1b7bf9900a015a18dadca36e40054b45198af9fab7",
+    "path": "weights/yolov8x-seg-solar-filament-2048-1110.pt",
+    "source": "hdjojo/yolov8x-seg-solar-filament/PyTorch/default/1",
+    "license": "Apache-2.0, declared by upstream model card",
+    "training_provenance": "Author declares 707 competition training observations only; complete training chain not independently rerun"
+  }
+]

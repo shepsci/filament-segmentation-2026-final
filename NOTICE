@@ -1,0 +1,9 @@
+This solution reuses publicly released HDJoJo models and the inference design from
+https://www.kaggle.com/code/hdjojo/solar-filament-segmentation version 2.
+Model handles and exact SHA256 files are in weights/manifest.json.
+Upstream notebook and model cards declared Apache License 2.0 on 2026-11-14.
+Changes by shepsci: retain a model's valid predictions when the other is empty;
+portable paths/device selection, self-contained Git LFS weight packaging,
+exact hashes, native RLE/disjointness validation and execution receipts.
+Ultralytics and all other dependencies retain their own licenses; see their distributions.
+No competition images, annotations or third-party prediction files are included.

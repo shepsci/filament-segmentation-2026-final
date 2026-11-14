@@ -1,0 +1,7 @@
+{
+  "owner": "shepsci",
+  "date": "2026-11-14",
+  "authorization": "Explicit user instruction to fully comply with official final-submission requirements, including model weights stored in public Git repository",
+  "scope": "Only the two selected public inference checkpoints; Git LFS keeps large blobs outside normal Git history",
+  "source": "https://www.kaggle.com/competitions/filament-segmentation-2026/overview/final-submission"
+}
