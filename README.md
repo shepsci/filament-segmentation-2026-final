@@ -50,3 +50,24 @@ The report must preserve this limitation. Attribution and licences: `NOTICE`,
 
 The final four-page report and form confirmation are separate required deliverables;
 this repository alone does not establish final eligibility.
+
+
+## Complete scientific workflow
+
+`pipeline.ipynb` includes default inference and validation, optional descriptive
+training-set diagnostics through `evaluate.py`, and optional new scratch training
+through `train.py`. `architecture.json` records the actual stored model structure.
+`diagnostics.json` records fixed-set baseline metrics and observation bootstrap
+intervals. The training exporter was checked on all 1,154 official annotator records:
+566 training and 141 validation observations, with no observation shared across splits.
+The new optional recipe is not a reconstruction of the upstream model training run.
+
+The primary artifact source is this repository. Our owned alternative mirror is
+https://www.kaggle.com/datasets/shepscientific/filament-segmentation-2026-review-assets .
+The notebook never downloads an upstream model or another participant's dataset.
+Original authorship remains credited in NOTICE and weights/manifest.json.
+
+Resource guidance: the two stored files total 286,752,617 bytes. Inference holds two
+large models and native masks. The local diagnostic timing was about two seconds per
+image after initialization on Apple MPS; other hardware can differ. Training needs a
+separate resource and storage budget and is disabled by default.

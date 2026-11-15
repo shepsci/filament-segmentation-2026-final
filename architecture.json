@@ -1,0 +1,782 @@
+[
+  {
+    "file": "yolo26x-seg-solar-filament-2048-1109.pt",
+    "parameters": 70480895,
+    "architecture_yaml": {
+      "nc": 1,
+      "end2end": true,
+      "reg_max": 1,
+      "scales": {
+        "n": [
+          0.5,
+          0.25,
+          1024
+        ],
+        "s": [
+          0.5,
+          0.5,
+          1024
+        ],
+        "m": [
+          0.5,
+          1.0,
+          512
+        ],
+        "l": [
+          1.0,
+          1.0,
+          512
+        ],
+        "x": [
+          1.0,
+          1.5,
+          512
+        ]
+      },
+      "backbone": [
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            64,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            128,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            256,
+            false,
+            0.25
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            256,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            512,
+            false,
+            0.25
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            512,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            512,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            1024,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            1024,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "SPPF",
+          [
+            1024,
+            5,
+            3,
+            true
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C2PSA",
+          [
+            1024
+          ]
+        ]
+      ],
+      "head": [
+        [
+          -1,
+          1,
+          "nn.Upsample",
+          [
+            "None",
+            2,
+            "nearest"
+          ]
+        ],
+        [
+          [
+            -1,
+            6
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            512,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "nn.Upsample",
+          [
+            "None",
+            2,
+            "nearest"
+          ]
+        ],
+        [
+          [
+            -1,
+            4
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            256,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            256,
+            3,
+            2
+          ]
+        ],
+        [
+          [
+            -1,
+            13
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            512,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            512,
+            3,
+            2
+          ]
+        ],
+        [
+          [
+            -1,
+            10
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          1,
+          "C3k2",
+          [
+            1024,
+            true,
+            0.5,
+            true
+          ]
+        ],
+        [
+          [
+            16,
+            19,
+            22
+          ],
+          1,
+          "Segment26",
+          [
+            "nc",
+            32,
+            256
+          ]
+        ]
+      ],
+      "scale": "x",
+      "yaml_file": "yolo26x-seg.yaml",
+      "channels": 3
+    },
+    "head_class": "Segment26",
+    "head_nm": 32,
+    "stride": [
+      8.0,
+      16.0,
+      32.0
+    ],
+    "layers": [
+      {
+        "index": 0,
+        "type": "Conv",
+        "parameters": 2784
+      },
+      {
+        "index": 1,
+        "type": "Conv",
+        "parameters": 166272
+      },
+      {
+        "index": 2,
+        "type": "C3k2",
+        "parameters": 389760
+      },
+      {
+        "index": 3,
+        "type": "Conv",
+        "parameters": 1327872
+      },
+      {
+        "index": 4,
+        "type": "C3k2",
+        "parameters": 1553664
+      },
+      {
+        "index": 5,
+        "type": "Conv",
+        "parameters": 5309952
+      },
+      {
+        "index": 6,
+        "type": "C3k2",
+        "parameters": 5022720
+      },
+      {
+        "index": 7,
+        "type": "Conv",
+        "parameters": 5309952
+      },
+      {
+        "index": 8,
+        "type": "C3k2",
+        "parameters": 5022720
+      },
+      {
+        "index": 9,
+        "type": "SPPF",
+        "parameters": 1476864
+      },
+      {
+        "index": 10,
+        "type": "C2PSA",
+        "parameters": 3264768
+      },
+      {
+        "index": 11,
+        "type": "Upsample",
+        "parameters": 0
+      },
+      {
+        "index": 12,
+        "type": "Concat",
+        "parameters": 0
+      },
+      {
+        "index": 13,
+        "type": "C3k2",
+        "parameters": 5612544
+      },
+      {
+        "index": 14,
+        "type": "Upsample",
+        "parameters": 0
+      },
+      {
+        "index": 15,
+        "type": "Concat",
+        "parameters": 0
+      },
+      {
+        "index": 16,
+        "type": "C3k2",
+        "parameters": 1700352
+      },
+      {
+        "index": 17,
+        "type": "Conv",
+        "parameters": 1327872
+      },
+      {
+        "index": 18,
+        "type": "Concat",
+        "parameters": 0
+      },
+      {
+        "index": 19,
+        "type": "C3k2",
+        "parameters": 5317632
+      },
+      {
+        "index": 20,
+        "type": "Conv",
+        "parameters": 5309952
+      },
+      {
+        "index": 21,
+        "type": "Concat",
+        "parameters": 0
+      },
+      {
+        "index": 22,
+        "type": "C3k2",
+        "parameters": 4436736
+      },
+      {
+        "index": 23,
+        "type": "Segment26",
+        "parameters": 17928479
+      }
+    ]
+  },
+  {
+    "file": "yolov8x-seg-solar-filament-2048-1110.pt",
+    "parameters": 71751811,
+    "architecture_yaml": {
+      "nc": 1,
+      "depth_multiple": 1.0,
+      "width_multiple": 1.25,
+      "backbone": [
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            64,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            128,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          3,
+          "C2f",
+          [
+            128,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            256,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          6,
+          "C2f",
+          [
+            256,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            512,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          6,
+          "C2f",
+          [
+            512,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            512,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          3,
+          "C2f",
+          [
+            512,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "SPPF",
+          [
+            512,
+            5
+          ]
+        ]
+      ],
+      "head": [
+        [
+          -1,
+          1,
+          "nn.Upsample",
+          [
+            "None",
+            2,
+            "nearest"
+          ]
+        ],
+        [
+          [
+            -1,
+            6
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          3,
+          "C2f",
+          [
+            512
+          ]
+        ],
+        [
+          -1,
+          1,
+          "nn.Upsample",
+          [
+            "None",
+            2,
+            "nearest"
+          ]
+        ],
+        [
+          [
+            -1,
+            4
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          3,
+          "C2f",
+          [
+            256
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            256,
+            3,
+            2
+          ]
+        ],
+        [
+          [
+            -1,
+            12
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          3,
+          "C2f",
+          [
+            512
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            512,
+            3,
+            2
+          ]
+        ],
+        [
+          [
+            -1,
+            9
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          3,
+          "C2f",
+          [
+            512
+          ]
+        ],
+        [
+          [
+            15,
+            18,
+            21
+          ],
+          1,
+          "Segment",
+          [
+            "nc",
+            32,
+            256
+          ]
+        ]
+      ],
+      "yaml_file": "/usr/src/app/ultralytics/yolo/v8/models/seg/yolov8x-seg.yaml",
+      "ch": 3,
+      "channels": 3
+    },
+    "head_class": "Segment",
+    "head_nm": 32,
+    "stride": [
+      8.0,
+      16.0,
+      32.0
+    ],
+    "layers": [
+      {
+        "index": 0,
+        "type": "Conv",
+        "parameters": 2320
+      },
+      {
+        "index": 1,
+        "type": "Conv",
+        "parameters": 115520
+      },
+      {
+        "index": 2,
+        "type": "C2f",
+        "parameters": 436800
+      },
+      {
+        "index": 3,
+        "type": "Conv",
+        "parameters": 461440
+      },
+      {
+        "index": 4,
+        "type": "C2f",
+        "parameters": 3281920
+      },
+      {
+        "index": 5,
+        "type": "Conv",
+        "parameters": 1844480
+      },
+      {
+        "index": 6,
+        "type": "C2f",
+        "parameters": 13117440
+      },
+      {
+        "index": 7,
+        "type": "Conv",
+        "parameters": 3687680
+      },
+      {
+        "index": 8,
+        "type": "C2f",
+        "parameters": 6969600
+      },
+      {
+        "index": 9,
+        "type": "SPPF",
+        "parameters": 1025920
+      },
+      {
+        "index": 10,
+        "type": "Upsample",
+        "parameters": 0
+      },
+      {
+        "index": 11,
+        "type": "Concat",
+        "parameters": 0
+      },
+      {
+        "index": 12,
+        "type": "C2f",
+        "parameters": 7379200
+      },
+      {
+        "index": 13,
+        "type": "Upsample",
+        "parameters": 0
+      },
+      {
+        "index": 14,
+        "type": "Concat",
+        "parameters": 0
+      },
+      {
+        "index": 15,
+        "type": "C2f",
+        "parameters": 1948800
+      },
+      {
+        "index": 16,
+        "type": "Conv",
+        "parameters": 922240
+      },
+      {
+        "index": 17,
+        "type": "Concat",
+        "parameters": 0
+      },
+      {
+        "index": 18,
+        "type": "C2f",
+        "parameters": 7174400
+      },
+      {
+        "index": 19,
+        "type": "Conv",
+        "parameters": 3687680
+      },
+      {
+        "index": 20,
+        "type": "Concat",
+        "parameters": 0
+      },
+      {
+        "index": 21,
+        "type": "C2f",
+        "parameters": 7379200
+      },
+      {
+        "index": 22,
+        "type": "Segment",
+        "parameters": 12317171
+      }
+    ]
+  }
+]
