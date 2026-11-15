@@ -17,3 +17,11 @@ does not authorize any other public asset or repository.
 Keep the official competition's final eligibility requirements on the checklist,
 but resolve them through the owner's final review. Preserve source and weights
 when restricting access or removing redundant public copies.
+
+Later owner instruction, recorded 2026-11-15 UTC: submit the official form tonight,
+keep the final submission private until the deadline, and make it public only
+after the deadline. This conditionally authorizes public release of this minimal
+repository after the competition is verified closed and the form has a confirmed
+submission. It supersedes the earlier publication hold for this repository only.
+The main development repository, Kaggle review dataset and notebook remain private.
+The existing public dataset 13351744 remains unchanged. No publication now.

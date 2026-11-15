@@ -1,6 +1,8 @@
 # Solar Filament Segmentation 2026 - shepsci
 
-PRIVATE REVIEW COPY. Publication requires completed owner review and explicit approval. Do not automatically publish at the deadline.
+Prepared for final submission. This repository stays private until the verified
+competition close. The owner has requested its public release after that close;
+the mandatory Google Form must also have a submission confirmation.
 
 This package reproduces our final two-model filament segmentation method.
 Start with `pipeline.ipynb`. It loads the model weights stored in this repository
