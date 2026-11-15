@@ -32,9 +32,6 @@ Keep available predictions when one model is empty. Submission 58351849 scored
 are processed but emit no CSV rows. Use `--original-skip` to reproduce the 1,309-mask
 upstream control (58351496, also 0.40).
 
-Generic box NMS IoU 0.5 and fixed horizontal-flip union each scored 0.39 and were
-rejected. The original independently developed U-Net/GBM pipeline scored 0.37.
-These are displayed public scores; they are not held-out training validation.
 
 ## Provenance and compliance
 
@@ -71,3 +68,5 @@ Resource guidance: the two stored files total 286,752,617 bytes. Inference holds
 large models and native masks. The local diagnostic timing was about two seconds per
 image after initialization on Apple MPS; other hardware can differ. Training needs a
 separate resource and storage budget and is disabled by default.
+
+The notebook includes a runnable pixel-grid example of mask IoU, duplicate suppression, and confidence-ordered pixel assignment. The report explains the final method as a learning workflow.

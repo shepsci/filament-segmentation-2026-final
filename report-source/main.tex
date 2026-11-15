@@ -28,167 +28,201 @@
 \guideStyletrue
 % \guideStylefalse
 
-
 \usepackage{xurl}
 \setlength{\emergencystretch}{2em}
 \guideStylefalse
 \begin{document}
-\title{Solar filament segmentation with two stored models}
+\title{From solar images to filament masks}
 \subtitle{A Solution to the Solar Filament Segmentation Challenge 2026}
-\author{shepsci}
+\author{Shep Scientific}
 \email{shepscientific@gmail.com}
 \begin{abstract}
 This report describes our solution to the Solar Filament Segmentation Challenge~2026, a Kaggle competition on automatic segmentation of solar filaments in GONG H-$\alpha$ observations.
-The final method combines two stored segmentation models and removes duplicate masks and shared pixels.
-The displayed public Panoptic Quality score is 0.40.
+Two stored segmentation models identify candidate filaments. A confidence-based procedure combines their masks and assigns shared pixels to one instance.
+The final submission contains 1,317 masks from 180 images and has a displayed public Panoptic Quality score of 0.40.
 
-The submission contains 1,317 masks from 180 images.
-Our repository includes the exact weights and a notebook that reproduces the predictions without training.
+The report explains each processing step and gives a worked mask example. Our notebook loads the exact stored weights and reproduces the submission.
 \end{abstract}
 \maketitle
+
 \section{Introduction}
 This report goes over the details of our submitted solution to the Solar Filament Segmentation Challenge~2026 \cite{filament-segmentation-2026}. The challenge, launched on July~10,~2026, is organized by the Earth-Space AI Research (ESAIR) Lab\footnote{\href{https://www.esairlab.com/home}{www.esairlab.com/}}. This challenge utilizes the MAGFiLO dataset for evaluation of the segmentation algorithms \cite{ahmadzadeh2024dataset}.
 
-Our work provides an image-only implementation with stored weights, fixed settings, mask checks, and a complete inference notebook.
-A mask identifies the pixels assigned to one filament. Model weights are numerical values learned during model training.
-The final method keeps valid predictions when one model gives no masks.
+The pipeline converts each image into a set of filament masks. A mask is a set of pixels assigned to one object.
+The model predicts a mask and a confidence score for each candidate. Post-processing turns those candidates into separate output instances.
+The following sections explain the numerical operations, their purpose, and their implementation in our notebook.
 
-The notebook uses files in our repository. It does not download another participant's model or predictions.
-
-\section{Methodology}\label{sec:methodology}
-\subsection{Owned assets and model source}
-Our delivery repository is \url{https://github.com/shepsci/filament-segmentation-2026-final}.
-Our Kaggle mirror is \url{https://www.kaggle.com/datasets/shepscientific/filament-segmentation-2026-review-assets}.
-The repository paths are \path{weights/yolo26x-seg-solar-filament-2048-1109.pt} and \path{weights/yolov8x-seg-solar-filament-2048-1110.pt}.
-
-The notebook loads these local files and checks their full SHA256 hashes in \path{weights/manifest.json}.
-Git LFS stores the two weights files. Run \texttt{git lfs pull} after cloning.
-The Kaggle mirror is an alternative owned copy, not an inference dependency.
-
-
-We retain attribution to HDJoJo for the original public weights and inference design~\cite{hdjojo}.
-The model cards declare Apache~2.0 licensing and training on the 707 official training observations.
-Hosting our copies does not change their authorship or training history.
-
-We checked the cards, exact files, stored training settings, and readable inference source.
-The previous weights file and original \path{data.yaml} are not available in the reused release.
-We cannot independently establish that complete earlier training chain.
-
-
-\subsection{Architecture and input}
-YOLO26x-seg and YOLOv8x-seg are convolutional instance segmentation models implemented by Ultralytics~\cite{ultralytics}.
-Each model extracts image features and combines features at several scales.
-A segmentation head predicts object locations and instance masks.
-
-The heads use 32 mask prototypes and instance coefficients.
-YOLO26x uses C3k2 blocks and a Segment26 head. YOLOv8x uses C2f blocks and a Segment head.
-Their loaded parameter counts are 70,480,895 and 71,751,811.
-
-Both heads use feature strides of 8, 16, and 32 pixels.
-\path{architecture.json} records the complete architecture and layer counts from our exact stored files.
-
-Each input is one supplied 2048 by 2048 JPEG image.
-OpenCV reads three identical grayscale channels. This adds no color information.
-The pinned predictor converts pixel values from integers in 0--255 to floating point values in 0--1.
-
-It uses the Ultralytics letterbox transform with a target dimension of 2048.
-The square input has the target dimensions, so this step adds no border or geometric change.
-There is no tile sampling, contrast normalization, image flip, or other inference augmentation.
-
-The software processes each image independently. File names identify output rows only.
 
 \begin{figure*}[t]
 \centering\includegraphics[width=\textwidth]{pipeline.png}
-\caption{The complete final inference pipeline. Both models load our local stored weights.}
-\Description{A supplied image enters two local models. Their masks undergo duplicate removal, pixel assignment, and output validation.}
+\caption{The complete inference pipeline. Each model loads our stored local weights. Mask selection and pixel assignment produce separate instances.}
+\Description{One supplied image enters two models, followed by mask duplicate removal, pixel assignment, RLE encoding and validation.}
 \label{fig:pipeline}
 \end{figure*}
 
-\subsection{Training record and sampling}
-We do no additional training of the submitted weights.
-Their cards describe all 707 official training observations as the training source.
-Those observations have 1,154 annotator records and 8,199 masks in the supplied training file.
+\section{Methodology}\label{sec:methodology}
+\subsection{Our reproducibility package}
+Our repository is \url{https://github.com/shepsci/filament-segmentation-2026-final}.
+Our owned Kaggle mirror is \url{https://www.kaggle.com/datasets/shepscientific/filament-segmentation-2026-review-assets}.
+The notebook uses the repository's local \path{weights/} directory. Git LFS stores the two model files.
 
-The earlier authors' exact split and initial weights are not independently available.
-We do not describe their training observations as held-out validation.
 
-Stored settings specify an image dimension of 2048, batch size 8, and MuSGD optimization.
-The initial learning rate is 0.001 and weight decay is 0.0001.
-The maximum epochs are 500 for YOLO26x and 300 for YOLOv8x.
+The files are \path{yolo26x-seg-solar-filament-2048-1109.pt} and \path{yolov8x-seg-solar-filament-2048-1110.pt}.
+\path{weights/manifest.json} gives their full SHA256 hashes. The loader checks each hash before model initialization.
+A matching hash establishes that a reader has the same bytes used for our result.
 
-The early stopping patience values are 25 and 30 epochs.
-The stored settings include rotation, translation, scaling, shearing, and horizontal and vertical flips.
-\path{provenance.json} retains all recovered training arguments, including the earlier initialization reference.
-These settings describe recorded metadata, not an independently repeated training run.
+The weights and initial inference design originate from HDJoJo~\cite{hdjojo}.
+The model cards declare Apache~2.0 licensing and training on the 707 official training observations. Our contribution packages these assets and preserves valid detections from either model.
+The original training cards and recovered settings are recorded in \path{provenance.json}.\footnote{The exact released files and stored settings were checked. The complete earlier initialization and training split were not independently reconstructed.}
 
-The notebook also contains an optional new training procedure in \path{train.py}.
-This procedure starts from the recorded architecture without downloading initial weights.
-It maps all supplied categories to one filament class and preserves each supplied instance polygon.
 
-It places all annotators of one observation in the same split.
-The exporter sorts observation names by a fixed SHA256 rule.
-The first 141 observations form the validation set. The remaining 566 observations form the training set.
+\subsection{Prepare the image}
+Each supplied JPEG has 2048 by 2048 pixels. OpenCV reads its grayscale intensity into three identical channels, as expected by the stored networks.
+The predictor converts integer values in 0--255 to floating point values in 0--1 by dividing by 255.
+For example, an intensity of 128 becomes approximately 0.502.
 
-The exported split, data configuration, seed, augmentation settings, and optimizer settings are recorded.
-This optional procedure is not a claim to reconstruct the reused weights. Default inference never starts it.
 
-\subsection{Mask selection and output}
-Both models use confidence threshold 0.5 and a maximum of 100 detections per image.
-The box-suppression IoU argument is 0.0. The end-to-end YOLO26 head retains its library behavior.
-The software keeps predictions from either model when the other model returns none.
+The target image dimension is 2048. The pinned Ultralytics letterbox transform keeps the aspect ratio when preparing an input.
+These square images already have the target dimensions, so their geometry stays unchanged.
+The predictor processes one image at a time. Its file name becomes the observation identifier in the output.
 
-It resizes each returned binary mask to 2048 by 2048 with nearest-neighbor interpolation.
-
-The software combines masks in a sequence from highest to lowest confidence score.
-It discards a mask if its intersection over union with a previously kept mask exceeds 0.5.
-Intersection over union, or IoU, is shared area divided by combined area.
-
-Masks then claim pixels in the same confidence sequence.
-Lower-confidence masks lose pixels already claimed by higher-confidence masks.
-The software discards remaining masks with fewer than five pixels.
-
-This step gives each output pixel to at most one instance.
-
-The software encodes each mask as compressed COCO run-length encoding through pycocotools.
-The CSV fields are \path{filament_id} and \path{segmentation_rle}.
-Images without masks emit no CSV rows.
-
-Checks cover image identifiers, mask dimensions, empty masks, duplicate identifiers, and shared pixels.
 
 \begin{figure*}[t]
 \centering\includegraphics[width=\textwidth]{examples.png}
-\caption{Final masks on the first three diagnostic observations. Cyan shows predictions. Magenta shows one supplied annotator's masks.
-The examples follow the fixed hash sequence. They are training examples, not hidden test labels.}
-\Description{Three grayscale solar images show cyan prediction contours and magenta annotation contours. Differences show missed regions and boundary disagreements.}
+\caption{Final segmentations on the first three fixed diagnostic observations. Cyan shows predictions. Magenta shows one supplied annotator's masks.}
+\Description{Three grayscale solar images show predicted and annotated contours, including matching regions, missed regions, and boundary differences.}
 \label{fig:examples}
 \end{figure*}
 
+\subsection{Predict candidate masks}
+The method uses YOLO26x-seg and YOLOv8x-seg from Ultralytics~\cite{ultralytics}.
+Both are convolutional instance segmentation networks. Their first layers extract image features such as local intensity changes and edges.
+Later layers combine features across spatial scales, which helps the networks represent objects with different dimensions.
+
+
+The model heads use feature strides of 8, 16, and 32 pixels. A stride is the distance between adjacent feature positions in input-image coordinates.
+Each segmentation head combines 32 shared mask patterns, called prototypes, with coefficients predicted for each detection.
+This operation produces an instance mask together with an object location and confidence score.
+
+
+YOLO26x uses C3k2 blocks and a Segment26 head. YOLOv8x uses C2f blocks and a Segment head.
+Their loaded parameter counts are 70,480,895 and 71,751,811. \path{architecture.json} records the exact layer definitions and counts.
+Model weights are the numerical values learned during training. The notebook loads them before prediction.
+
+
+Both predictors use an image dimension of 2048, confidence threshold 0.5, and at most 100 detections.
+The box-suppression IoU argument is 0.0; the end-to-end YOLO26 head retains its pinned library behavior.
+Confidence places detections in a priority sequence. It should be interpreted as a ranking score rather than a guaranteed probability.
+
+
+The software keeps the candidates returned by each model. This allows a filament found by one model to enter the combined result.
+Each returned binary mask is resized to the input dimensions with nearest-neighbor interpolation.
+Nearest-neighbor interpolation copies a nearby mask value and keeps the binary mask representation.
+
+
+
+
+\subsection{Combine masks and assign pixels}
+The software puts candidates in a sequence from highest to lowest confidence.
+It compares each new mask with the masks already kept. Their intersection over union, or IoU, measures how much their pixel sets overlap:
+\begin{equation}
+\mathrm{IoU}(A,B)=\frac{|A\cap B|}{|A\cup B|}.
+\end{equation}
+The numerator counts shared pixels. The denominator counts pixels belonging to either mask, with shared pixels counted once.
+
+A candidate is discarded when its IoU with any kept mask exceeds 0.5. This mask-level suppression removes strongly overlapping duplicates.
+Candidates with smaller IoU can represent nearby filaments, so the software keeps them for pixel assignment.
+The threshold stays fixed at 0.5 for both model sources.
+
+
+Kept masks claim pixels in the same confidence sequence. A lower-confidence mask receives only pixels that a higher-confidence mask has not claimed.
+This procedure gives each output pixel to at most one filament.
+The software then keeps each remaining region with at least five pixels. This area check removes very small remnants after subtraction.
+
+
+\paragraph{Worked example.}
+Mask A contains 40 pixels and has confidence 0.90. Mask B contains 30 pixels and has confidence 0.80.
+They share 10 pixels, so their IoU is $10/(40+30-10)=1/6$. Both pass mask selection.
+
+A claims its 40 pixels first. B then keeps its 20 unclaimed pixels. The final two masks contain 60 distinct pixels.
+A third candidate D has 40 pixels and shares 35 with A. Its IoU with A is $35/45$, approximately 0.778.
+At confidence 0.70, D is removed as a duplicate before pixel assignment. Figure~\ref{fig:worked} shows these operations on a small grid.
+
+
+\begin{figure}[t]
+\centering\includegraphics[width=\linewidth]{mask-worked.png}
+\caption{A small mask example. A and B describe nearby regions. D duplicates A. The final grid gives shared pixels to A.}
+\Description{Three colored pixel-grid panels show candidate masks A and B, duplicate D, and the separate final pixel assignments.}
+\label{fig:worked}
+\end{figure}
+
+\subsection{Encode and check the output}
+Pycocotools converts each final mask to compressed COCO run-length encoding, or RLE.
+RLE stores runs of pixels rather than listing all pixel values.
+The CSV has two fields: \path{filament_id} and \path{segmentation_rle}. Each predicted filament receives one row and a unique identifier.
+
+
+Output checks decode the masks and confirm their 2048 by 2048 dimensions, nonempty regions, identifiers, and pixel separation.
+An image with no predicted filament produces no rows. The pipeline still records that the image was processed.
+These checks make the encoded output suitable for the competition's instance evaluation.
+
+
+\subsection{Training record and optional learning path}
+The submitted networks use the released weights. Their declared training source contains 707 observations, 1,154 annotator records, and 8,199 masks.
+Recorded training settings include image dimension 2048, batch size 8, MuSGD, initial learning rate 0.001, and weight decay 0.0001.
+The maximum epochs are 500 and 300, with early stopping patience of 25 and 30 for YOLO26x and YOLOv8x.
+
+
+The stored arguments also describe rotation, translation, scaling, shear, and horizontal and vertical flips.
+\path{provenance.json} records the complete recovered argument lists.
+This distinguishes the training configuration from the fixed prediction settings explained above.
+
+For readers who want to train a new model, the notebook includes an optional procedure in \path{train.py}.
+It exports the supplied instance polygons into one filament class and starts from the recorded architecture.
+It groups every annotator record of an observation into the same data split.
+
+
+A fixed SHA256 ordering assigns 566 observations to training and 141 to validation. Grouping prevents copies of one observation from entering both sets.
+The optional procedure records its seed, optimizer, augmentation settings, and split manifest. It is a new training recipe, distinct from the released weights' history.
+The default notebook path loads the stored final weights and runs inference.
+
+
 \section{Evaluation}\label{sec:evaluation}
-\subsection{Strategy and final public result}
-The displayed public Panoptic Quality score is 0.40 for submission 58351849.
-Panoptic Quality, or PQ, combines instance detection and matched-mask IoU.
-The private score is unavailable. The displayed public score alone does not determine the jury ranking.
+\subsection{Final competition result}
+The selected submission, 58351849, has a displayed public Panoptic Quality score of 0.40.
+The pipeline processed all 180 supplied test images. It produced 1,317 masks in 178 images, with two images having no masks.
+Every output pixel belongs to at most one predicted instance.
 
-All 180 supplied test images were processed.
-The final output contains 1,317 masks in 178 images. Two images have no masks.
-No output masks share pixels within an image.
 
-A second complete run reproduced the submitted CSV byte for byte in the recorded Apple MPS environment.
-The submission SHA256 is recorded in \path{validation.json}.
+A second complete notebook execution reproduced the submitted CSV byte for byte on Apple MPS.
+The file hash and validation receipt are included in our package. The displayed public score describes the public leaderboard portion of the test set.
+The private score remains unavailable.
 
-\subsection{Fixed descriptive diagnostics}
-We also evaluate the final configuration against both single-model baselines.
-The diagnostic set contains 12 official training observations and their 17 annotator records.
-The set uses the first 12 names sorted by \texttt{SHA256(final-method-diagnostics-v1:name)}.
 
-This rule was fixed before inference and does not use scores or masks.
-Each annotator record receives the same prediction for its observation.
-PQ counts are pooled over all records, as in the host self-evaluation notebook~\cite{hosteval}.
+\subsection{Read the diagnostic measures}
+Panoptic Quality, or PQ, combines finding the correct instances with matching their shapes.
+A matched pair has IoU above 0.5. An extra prediction is a false positive; a missed reference instance is a false negative.
+The score divides the sum of matched IoUs by $TP+0.5FP+0.5FN$.
 
-These models have seen the training observations. These results are descriptive checks, not independent validation or test estimates.
+
+Dice and IoU also describe overlap between the union of predicted pixels and an annotator's union mask.
+We report their means and per-record distributions in the evaluation output.
+One-to-many counts describe a reference instance split across several predictions. Many-to-one counts describe predictions that merge reference instances.
+
+
+\subsection{Final method and component baselines}
+We compare the final configuration with each individual model on a fixed diagnostic set.
+It contains 12 official training observations and their 17 annotator records. The selection rule sorts observation names by \texttt{SHA256(final-method-diagnostics-v1:name)}.
+This rule selects the examples before inference scores are available.
+
+
+These are training-set diagnostics because the released weights have seen the training observations. They illustrate behavior and do not estimate held-out performance.
+The evaluator scores each annotator record with the observation's predictions, following the host self-evaluation notebook~\cite{hosteval}.
+PQ counts are pooled across those records.
+
 
 \begin{table}[t]
-\caption{Final method and component baselines on the fixed training diagnostic set. Intervals describe sampling uncertainty only.}
+\caption{Fixed training-set diagnostics. Dice and IoU are mean binary-mask scores. PQ intervals show observation sampling uncertainty.}
 \label{tab:diagnostics}
 \centering\small
 \begin{tabular}{lccc}\toprule
@@ -199,55 +233,44 @@ Final ensemble & 0.531 [0.448, 0.619] & .687 & .538\\\bottomrule
 \end{tabular}
 \end{table}
 
-The Dice and IoU columns are means over each annotator's union mask.
-Confidence intervals use 2,000 bootstrap samples of whole observations, with random seed 3407.
-All annotator records stay together within each sampled observation.
-
-The intervals do not remove training reuse bias.
-\path{diagnostics.json} records per-record values and the selection rule.
-\path{evaluate.py} reproduces PQ, Dice, IoU, and fragmentation diagnostics from the official training annotations.
+The final method matches 98 reference pairs, compared with 77 and 90 for the individual models.
+It has 30 extra predictions and 34 missed instances. The individual models have 10/55 and 26/42 extra/missed instances.
+These counts show the coverage tradeoff when combining detections.
 
 
-
-The final diagnostic counts are 98 matched pairs, 30 false positives, and 34 false negatives.
-At diagnostic IoU threshold 0.1, there are zero one-to-many cases and three many-to-one cases.
-That threshold is an explicit diagnostic choice, not a claimed hidden scoring rule.
-
-Matched-instance IoU has mean 0.704, median 0.721, and 10th and 90th percentiles 0.585 and 0.804.
-The first image includes boundary disagreements and missed regions. The examples therefore show limitations as well as successful detections.
-
-\subsection{Strengths, limits, and reproducibility}
-The ensemble combines detections from two architectures. It can retain a filament detected by only one model.
-Confidence-based pixel assignment satisfies the nonoverlap requirement.
-The five-pixel filter removes empty or very small remnants after subtraction.
-
-These choices preserve instance output while avoiding duplicate predictions.
-
-The diagnostic baselines support better coverage from the combined configuration on this fixed sample.
-They do not prove improved generalization.
-The small sample, reused training images, and incomplete upstream training chain limit the conclusions.
-
-Missed filaments, extra detections, boundary errors, and merged instances remain possible.
-Future work can use an independently trained model with an observation-grouped validation split and explicit boundary evaluation.
-No such future model is part of this submission.
+The final matched-instance IoU has mean 0.704 and median 0.721. Its 10th and 90th percentiles are 0.585 and 0.804.
+At a diagnostic overlap threshold of 0.1, the result has zero one-to-many cases and three many-to-one cases.
+This lower threshold describes partial overlaps that can reveal splitting and merging.
 
 
-The recorded environment uses Python 3.12.12, Ultralytics 8.4.212, PyTorch 2.13.0, and torchvision 0.28.0.
-It uses NumPy 2.5.2, OpenCV 5.0.0.93, and pycocotools 2.0.11.
-All package versions are in \path{requirements.txt}.
-
-Apple MPS produced the verified byte-identical result. CUDA and CPU support does not guarantee identical threshold-edge predictions.
-The fixed diagnostic run took about two seconds per image after initialization on this Mac.
-This timing is a local observation, not a cross-hardware performance guarantee.
+Confidence intervals use 2,000 bootstrap samples with seed 3407. Each sample resamples whole observations and keeps their annotator records together.
+This respects the shared image behind multiple annotation records. The interval describes sample variability; training reuse still limits generalization claims.
+The evaluation module and recorded metrics reproduce these calculations.
 
 
-The notebook loads our repository weights without training, runs inference, validates the output, and provides optional diagnostics and training.
-Only the official competition images and, for optional diagnostics or training, the official training annotation file are supplied separately.
-No external test annotations, additional inference frames, filename metadata features, or reference answers enter prediction.
 
-The author must review and understand each component before the final submission.
 
-\clearpage
+\subsection{Strengths, limits, and reuse}
+Combining two models can recover candidates found by either network. Mask suppression reduces duplicates, while pixel assignment preserves separate output instances.
+Figure~\ref{fig:examples} shows how predicted boundaries compare with supplied annotations.
+The examples include both agreements and differences.
+
+
+Small or faint filaments can be missed. Nearby instances can merge, and extra candidates can increase the false-positive count.
+The fixed diagnostic set is small, so its results should be read with the uncertainty intervals.
+A useful next step is observation-grouped validation of a newly trained model, with explicit attention to boundaries and merged instances.
+
+
+The recorded environment uses Python 3.12.12, Ultralytics 8.4.212, PyTorch 2.13.0, torchvision 0.28.0, and NumPy 2.5.2.
+It uses OpenCV 5.0.0.93 and pycocotools 2.0.11. \path{requirements.txt} lists all package versions.
+Exact replay was verified on Apple MPS. Numerical differences near thresholds can change results on other hardware.
+
+
+Readers can use the notebook in three ways: reproduce the final predictions, inspect diagnostic measures, or learn the optional new training workflow.
+Reusable modules implement inference, evaluation, and training. The notebook explains their inputs, numerical decisions, and outputs.
+All prediction dependencies are stored in our repository. The official competition distribution supplies the image inputs.
+
+
 \section{Acknowledgment}\label{sec:acknowledgment}
 
     % Do not change
