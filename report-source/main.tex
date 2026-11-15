@@ -53,22 +53,49 @@ This report goes over the details of our submitted solution to the Solar Filamen
 
 Solar filaments are clouds of relatively cool, dense plasma supported by magnetic fields above the Sun's surface.
 Against the bright solar disk, they appear as dark structures. Seen above the solar edge, the same type of structure is called a prominence~\cite{nsofilaments}.
-Their shapes provide a visible record of structures in the solar atmosphere.
+Their shapes provide a visible record of structures in the solar atmosphere, where magnetic fields guide the plasma~\cite{mackay2010}.
 
 
-H-alpha observations show the Sun in a narrow range of light associated with hydrogen.
+Studying filaments connects visible solar features with questions about magnetic structure and its changes.
+Their area, length, and orientation can help describe how these features vary across the Sun~\cite{bernasconi2005}.
+Repeated measurements also support studies of where filaments occur during the solar cycle~\cite{hao2013}.
+
+Reliable outlines are an important first step toward such measurements.
+
+H-alpha observations show the Sun in a narrow range of light associated with hydrogen, near a wavelength of 656.28 nanometers.
+The Global Oscillation Network Group (GONG) produces full-disk images in this spectral line~\cite{nsogong}.
 They reveal long filament bodies and smaller extensions that can be difficult to distinguish from the surrounding image texture.
+
 A filament may appear broad and dark in one region, then narrow and faint along another part of its boundary.
 
+These variations make a filament difficult to describe with a simple brightness cutoff.
+A useful outline must follow the visible structure while separating it from nearby dark features.
+Even careful observers can disagree about faint edges or whether two neighboring regions belong to the same filament.
+
+The MAGFiLO dataset records multiple human outlines, making this variation part of the scientific task~\cite{ahmadzadeh2024dataset}.
 
 Image segmentation connects such observations with measurements. It assigns image pixels to a region of interest, producing a \emph{mask}.
 A binary mask uses one for filament pixels and zero for the background.
 A mask makes it possible to describe a filament's extent, compare its shape with another outline, or measure its projected area.
 
-The present task is \emph{instance segmentation}: nearby filaments receive separate masks rather than one combined label.
+The present task is \emph{instance segmentation}: nearby filaments receive separate masks rather than one combined label~\cite{kirillov2019}.
+
+Automatic filament recognition has a substantial history in solar research.
+Bernasconi and colleagues developed a system to identify filaments and measure properties such as area, length, and orientation~\cite{bernasconi2005}.
+Hao and colleagues used image preparation, edge detection, and shape analysis to identify filaments in H-alpha observations~\cite{hao2013}.
+
+These studies show how image processing can turn a large collection of solar images into measurements of solar structure.
+
+Later work explored models that learn filament appearance from labeled examples.
+Ahmadzadeh and colleagues applied a neural network to filament segmentation in full-disk H-alpha images~\cite{ahmadzadeh2019}.
+This approach learns combinations of brightness, texture, and shape rather than relying on a single image threshold.
+
+Its usefulness still depends on the quality of the examples and the agreement between predicted and human-drawn boundaries.
 
 Our aim is to explain a practical method for this task. Two trained models propose filament regions, and a short series of selection steps combines their results.
-The discussion focuses on the relationship between visible solar structures, predicted masks, and the quality of the final segmentation.
+We relate each step to the solar image, then examine both object detection and boundary agreement.
+The final result illustrates how learning from images and carefully combining outlines can support the identification of individual solar filaments.
+
 
 \begin{figure*}[t]
 \centering\includegraphics[width=\textwidth]{pipeline.png}
@@ -79,7 +106,7 @@ The discussion focuses on the relationship between visible solar structures, pre
 
 \section{Methodology}\label{sec:methodology}
 \subsection{Images and reference outlines}
-The competition supplies grayscale GONG images with 2048 by 2048 pixels.
+The competition supplies grayscale GONG images with 2048 by 2048 pixels~\cite{nsogong,ahmadzadeh2024dataset}.
 Its training data contain 707 observations, 1,154 annotation records, and 8,199 filament masks.
 Several observers may outline the same observation independently, providing different reference descriptions of its filaments.
 
@@ -184,7 +211,7 @@ Missing a faint filament is a detection error. Drawing the boundary too narrowly
 Splitting one filament into several pieces or joining neighboring filaments can affect both properties.
 
 
-Panoptic Quality, or PQ, combines detection and shape agreement. A prediction matches a reference mask when their IoU exceeds 0.5.
+Panoptic Quality, or PQ, combines detection and shape agreement~\cite{kirillov2019}. A prediction matches a reference mask when their IoU exceeds 0.5.
 The score rewards overlap in matched pairs and includes penalties for extra predictions and missed reference filaments.
 This makes it more informative than measuring only the brightness or area of a predicted region.
 
