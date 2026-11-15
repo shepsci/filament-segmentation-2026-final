@@ -7,3 +7,7 @@ portable paths/device selection, self-contained Git LFS weight packaging,
 exact hashes, native RLE/disjointness validation and execution receipts.
 Ultralytics and all other dependencies retain their own licenses; see their distributions.
 No competition images, annotations or third-party prediction files are included.
+
+Siva Kumar discussed pixel-disjoint masks and confidence-ordered painting in
+https://www.kaggle.com/competitions/filament-segmentation-2026/discussion/735377
+(2026-08-15). The validation helper preserves this attribution.

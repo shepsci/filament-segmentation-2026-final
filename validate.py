@@ -18,11 +18,11 @@ Re-check `min_area` AFTER subtraction — an eroded remnant that survives as a s
 positive, and each false positive costs 0.5 in PQ's denominator.
 
 Credit: the failure mode and the score-ordered-painting remedy were first written up publicly by
-Siva Kumar in competition discussion/735377 (2026-08-15). Implementation here is our own; see
-THIRDPARTY.md.
+Siva Kumar in competition discussion/735377 (2026-08-15). Implementation here is our own;
+attribution is retained in NOTICE.
 
 Usage:
-    python3 scripts/check_no_overlap.py submission.csv        # exits non-zero on any overlap
+    python3 validate.py submission.csv        # exits non-zero on any overlap
 """
 from __future__ import annotations
 

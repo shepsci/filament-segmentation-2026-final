@@ -2,10 +2,22 @@
 
 PRIVATE REVIEW COPY. Publication requires completed owner review and explicit approval. Do not automatically publish at the deadline.
 
-Minimal reproducible final-solution release. Model weights are **stored in this Git
-repository using Git LFS**. The notebook SHA256-verifies the original PyTorch checkpoints.
-No private dependencies, external model source, cached answers or retraining is needed.
-Supply the official competition test images under their original licence.
+This package reproduces our final two-model filament segmentation method.
+Start with `pipeline.ipynb`. It loads the model weights stored in this repository
+using Git LFS and checks that the files match the recorded originals.
+Supply the official competition images under their original licence.
+
+## Find the final materials
+
+- `report-review.pdf`: the current four-page paper.
+- `report-source/`: its Overleaf-compatible LaTeX source and figures.
+- `pipeline.ipynb`: the complete illustrated workflow, with optional training and evaluation.
+- `inference.py` and `validate.py`: prediction and output checks.
+- `evaluate.py` and `diagnostics.json`: descriptive training-set evaluation and results.
+- `train.py` and `new-training-split.json`: the separate optional training recipe.
+- `weights/`: both final model files and their source manifest.
+- `requirements.txt`, `architecture.json`, and `provenance.json`: environment and model details.
+- `NOTICE` and `LICENSE`: attribution and licensing information.
 
 ## Reproduce
 
@@ -29,8 +41,7 @@ maximum 100 detections. Pool instance masks; confidence-order mask NMS at IoU 0.
 paint masks into disjoint native 2048x2048 regions; discard remnants below five pixels.
 Keep available predictions when one model is empty. Submission 58351849 scored
 **0.40 public PQ**, with 1,317 masks over 178 of 180 images. Images with zero masks
-are processed but emit no CSV rows. Use `--original-skip` to reproduce the 1,309-mask
-upstream control (58351496, also 0.40).
+are processed but emit no CSV rows.
 
 
 ## Provenance and compliance
@@ -40,13 +51,13 @@ training images only. We verified exact public model versions, file hashes, mode
 cards, checkpoint training arguments and readable inference source. We did **not**
 retrain or independently reconstruct their complete training histories. The weights
 have seen all training observations, so training-set metrics are not presented as
-honest validation of these public models. No public MAGFiLO test annotations,
-unverified Tushhaaarrrr assets, reference submission or encoded answers are used.
+independent validation of these models. Prediction uses only the supplied test image.
 The report must preserve this limitation. Attribution and licences: `NOTICE`,
 `LICENSE`, and `weights/manifest.json`.
 
-The final four-page report and form confirmation are separate required deliverables;
-this repository alone does not establish final eligibility.
+Final eligibility also requires the official Google Form, its prediction CSV and PDF
+uploads, and public repository access at the required time. The owner has not yet
+approved publication; this package remains private for review.
 
 
 ## Complete scientific workflow
