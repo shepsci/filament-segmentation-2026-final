@@ -32,243 +32,233 @@
 \setlength{\emergencystretch}{2em}
 \guideStylefalse
 \begin{document}
-\title{From solar images to filament masks}
+\title{Learning to identify solar filaments in images of the Sun}
 \subtitle{A Solution to the Solar Filament Segmentation Challenge 2026}
 \author{Shep Scientific}
 \email{shepscientific@gmail.com}
 \begin{abstract}
 This report describes our solution to the Solar Filament Segmentation Challenge~2026, a Kaggle competition on automatic segmentation of solar filaments in GONG H-$\alpha$ observations.
-Two stored segmentation models identify candidate filaments. A confidence-based procedure combines their masks and assigns shared pixels to one instance.
-The final submission contains 1,317 masks from 180 images and has a displayed public Panoptic Quality score of 0.40.
+Solar filaments have varied shapes and faint boundaries, which make their automatic identification difficult.
+We combine predictions from two image-segmentation models and turn them into separate outlines of individual filaments.
 
-The report explains each processing step and gives a worked mask example. Our notebook loads the exact stored weights and reproduces the submission.
+The final method produces 1,317 masks from 180 images and achieves a displayed public Panoptic Quality score of 0.40.
+We explain the method through solar images, simple examples, and comparisons with individual models.
+The results show how detection and boundary quality both affect the description of solar structures.
+
 \end{abstract}
 \maketitle
 
 \section{Introduction}
 This report goes over the details of our submitted solution to the Solar Filament Segmentation Challenge~2026 \cite{filament-segmentation-2026}. The challenge, launched on July~10,~2026, is organized by the Earth-Space AI Research (ESAIR) Lab\footnote{\href{https://www.esairlab.com/home}{www.esairlab.com/}}. This challenge utilizes the MAGFiLO dataset for evaluation of the segmentation algorithms \cite{ahmadzadeh2024dataset}.
 
-The pipeline converts each image into a set of filament masks. A mask is a set of pixels assigned to one object.
-The model predicts a mask and a confidence score for each candidate. Post-processing turns those candidates into separate output instances.
-The following sections explain the numerical operations, their purpose, and their implementation in our notebook.
+Solar filaments are clouds of relatively cool, dense plasma supported by magnetic fields above the Sun's surface.
+Against the bright solar disk, they appear as dark structures. Seen above the solar edge, the same type of structure is called a prominence~\cite{nsofilaments}.
+Their shapes provide a visible record of structures in the solar atmosphere.
 
+
+H-alpha observations show the Sun in a narrow range of light associated with hydrogen.
+They reveal long filament bodies and smaller extensions that can be difficult to distinguish from the surrounding image texture.
+A filament may appear broad and dark in one region, then narrow and faint along another part of its boundary.
+
+
+Image segmentation connects such observations with measurements. It assigns image pixels to a region of interest, producing a \emph{mask}.
+A binary mask uses one for filament pixels and zero for the background.
+A mask makes it possible to describe a filament's extent, compare its shape with another outline, or measure its projected area.
+
+The present task is \emph{instance segmentation}: nearby filaments receive separate masks rather than one combined label.
+
+Our aim is to explain a practical method for this task. Two trained models propose filament regions, and a short series of selection steps combines their results.
+The discussion focuses on the relationship between visible solar structures, predicted masks, and the quality of the final segmentation.
 
 \begin{figure*}[t]
 \centering\includegraphics[width=\textwidth]{pipeline.png}
-\caption{The complete inference pipeline. Each model loads our stored local weights. Mask selection and pixel assignment produce separate instances.}
-\Description{One supplied image enters two models, followed by mask duplicate removal, pixel assignment, RLE encoding and validation.}
+\caption{From a solar observation to individual filament masks. Two models propose regions. Selection removes duplicates and resolves shared pixels.}
+\Description{A solar image is processed by two models. Their proposed regions are combined into separate filament masks and saved for evaluation.}
 \label{fig:pipeline}
 \end{figure*}
 
 \section{Methodology}\label{sec:methodology}
-\subsection{Our reproducibility package}
-Our repository is \url{https://github.com/shepsci/filament-segmentation-2026-final}.
-Our owned Kaggle mirror is \url{https://www.kaggle.com/datasets/shepscientific/filament-segmentation-2026-review-assets}.
-The notebook uses the repository's local \path{weights/} directory. Git LFS stores the two model files.
+\subsection{Images and reference outlines}
+The competition supplies grayscale GONG images with 2048 by 2048 pixels.
+Its training data contain 707 observations, 1,154 annotation records, and 8,199 filament masks.
+Several observers may outline the same observation independently, providing different reference descriptions of its filaments.
 
 
-The files are \path{yolo26x-seg-solar-filament-2048-1109.pt} and \path{yolov8x-seg-solar-filament-2048-1110.pt}.
-\path{weights/manifest.json} gives their full SHA256 hashes. The loader checks each hash before model initialization.
-A matching hash establishes that a reader has the same bytes used for our result.
-
-The weights and initial inference design originate from HDJoJo~\cite{hdjojo}.
-The model cards declare Apache~2.0 licensing and training on the 707 official training observations. Our contribution packages these assets and preserves valid detections from either model.
-The original training cards and recovered settings are recorded in \path{provenance.json}.\footnote{The exact released files and stored settings were checked. The complete earlier initialization and training split were not independently reconstructed.}
+These outlines are valuable teaching examples, but a boundary can remain uncertain where a filament fades into the background~\cite{ahmadzadeh2024dataset}.
+The goal is therefore more demanding than finding dark pixels. A useful method must preserve thin extensions and distinguish neighboring structures.
+It must also avoid treating unrelated dark regions as parts of a single filament.
 
 
-\subsection{Prepare the image}
-Each supplied JPEG has 2048 by 2048 pixels. OpenCV reads its grayscale intensity into three identical channels, as expected by the stored networks.
-The predictor converts integer values in 0--255 to floating point values in 0--1 by dividing by 255.
-For example, an intensity of 128 becomes approximately 0.502.
+\subsection{Prepare each observation}
+Pixel intensity describes the brightness at each position in an image.
+We divide the supplied intensity values by 255, placing them on a common scale between zero and one.
+For example, an intensity of 128 becomes approximately 0.50.
 
 
-The target image dimension is 2048. The pinned Ultralytics letterbox transform keeps the aspect ratio when preparing an input.
-These square images already have the target dimensions, so their geometry stays unchanged.
-The predictor processes one image at a time. Its file name becomes the observation identifier in the output.
-
+Each image keeps its original dimensions. The model interface reads the grayscale image through three identical channels, which represent the same brightness information.
+The method then processes that observation independently. This keeps each prediction tied to the visible structure in the supplied image.
 
 \begin{figure*}[t]
 \centering\includegraphics[width=\textwidth]{examples.png}
-\caption{Final segmentations on the first three fixed diagnostic observations. Cyan shows predictions. Magenta shows one supplied annotator's masks.}
-\Description{Three grayscale solar images show predicted and annotated contours, including matching regions, missed regions, and boundary differences.}
+\caption{Solar images from the fixed training examples. Cyan contours show predicted filament boundaries. Magenta contours show one observer's reference outlines.}
+\Description{Three grayscale images of the Sun show predicted and human-drawn filament contours, including matching regions and boundary differences.}
 \label{fig:examples}
 \end{figure*}
 
-\subsection{Predict candidate masks}
-The method uses YOLO26x-seg and YOLOv8x-seg from Ultralytics~\cite{ultralytics}.
-Both are convolutional instance segmentation networks. Their first layers extract image features such as local intensity changes and edges.
-Later layers combine features across spatial scales, which helps the networks represent objects with different dimensions.
+\subsection{Learned models for filament shapes}
+We use the YOLO26x-seg and YOLOv8x-seg segmentation models implemented by Ultralytics~\cite{ultralytics}.
+These neural networks learn patterns from example images and their reference outlines.
+Early layers respond to local changes in brightness. Later layers combine information over wider regions to represent larger shapes.
 
 
-The model heads use feature strides of 8, 16, and 32 pixels. A stride is the distance between adjacent feature positions in input-image coordinates.
-Each segmentation head combines 32 shared mask patterns, called prototypes, with coefficients predicted for each detection.
-This operation produces an instance mask together with an object location and confidence score.
+Using several image scales helps a network relate fine detail to the broader body of an object.
+A segmentation head converts those learned image features into a proposed mask for each detected filament.
+Each proposal also receives a confidence score, which lets us place proposals in a priority sequence.
 
 
-YOLO26x uses C3k2 blocks and a Segment26 head. YOLOv8x uses C2f blocks and a Segment head.
-Their loaded parameter counts are 70,480,895 and 71,751,811. \path{architecture.json} records the exact layer definitions and counts.
-Model weights are the numerical values learned during training. The notebook loads them before prediction.
+The model files are stored in our own reproducibility package. We credit HDJoJo for the released models and initial prediction method~\cite{hdjojo}.
+Their model cards identify the 707 official training observations as the training source.\footnote{The complete earlier training split and initial model history were not independently reconstructed.}
+Our final method combines the available predictions from both models, including a valid prediction returned by only one of them.
 
 
-Both predictors use an image dimension of 2048, confidence threshold 0.5, and at most 100 detections.
-The box-suppression IoU argument is 0.0; the end-to-end YOLO26 head retains its pinned library behavior.
-Confidence places detections in a priority sequence. It should be interpreted as a ranking score rather than a guaranteed probability.
+The recorded training settings use full-size images, batches of eight, an initial learning rate of 0.001, and weight decay of 0.0001.
+The learning rate controls the size of model updates during training.
+Weight decay discourages overly large model parameters. The recorded training algorithm is MuSGD.
+
+The maximum training lengths are 500 and 300 epochs, with early stopping patience of 25 and 30 for the two models.
+An epoch is one pass through the training examples. Early stopping ends training when the monitored performance stops improving.
+
+The recovered settings also include rotations, shifts, changes in scale, and horizontal and vertical flips during training.
+Such transformations vary the appearance of training examples while retaining their filament labels.
+The final prediction step uses the supplied image orientation and the stored model parameters.
 
 
-The software keeps the candidates returned by each model. This allows a filament found by one model to enter the combined result.
-Each returned binary mask is resized to the input dimensions with nearest-neighbor interpolation.
-Nearest-neighbor interpolation copies a nearby mask value and keeps the binary mask representation.
 
 
+\subsection{Combine the proposed regions}
+Two models can describe the same filament with slightly different masks. Keeping both would count that structure twice.
+We therefore compare their overlap before forming the final result.
+The overlap measure is intersection over union, or IoU:
 
-
-\subsection{Combine masks and assign pixels}
-The software puts candidates in a sequence from highest to lowest confidence.
-It compares each new mask with the masks already kept. Their intersection over union, or IoU, measures how much their pixel sets overlap:
 \begin{equation}
-\mathrm{IoU}(A,B)=\frac{|A\cap B|}{|A\cup B|}.
+\mathrm{IoU}=\frac{\text{shared area}}{\text{combined area}}.
 \end{equation}
-The numerator counts shared pixels. The denominator counts pixels belonging to either mask, with shared pixels counted once.
+The combined area counts every pixel covered by either mask once. Identical masks have IoU equal to one; masks with no shared pixels have IoU equal to zero.
 
-A candidate is discarded when its IoU with any kept mask exceeds 0.5. This mask-level suppression removes strongly overlapping duplicates.
-Candidates with smaller IoU can represent nearby filaments, so the software keeps them for pixel assignment.
-The threshold stays fixed at 0.5 for both model sources.
-
-
-Kept masks claim pixels in the same confidence sequence. A lower-confidence mask receives only pixels that a higher-confidence mask has not claimed.
-This procedure gives each output pixel to at most one filament.
-The software then keeps each remaining region with at least five pixels. This area check removes very small remnants after subtraction.
+The method considers proposals from highest to lowest confidence.
+It removes a proposal if its IoU with an already accepted mask exceeds 0.5.
+This favors one description of a strongly overlapping region while keeping nearby masks with less shared area.
 
 
-\paragraph{Worked example.}
-Mask A contains 40 pixels and has confidence 0.90. Mask B contains 30 pixels and has confidence 0.80.
-They share 10 pixels, so their IoU is $10/(40+30-10)=1/6$. Both pass mask selection.
-
-A claims its 40 pixels first. B then keeps its 20 unclaimed pixels. The final two masks contain 60 distinct pixels.
-A third candidate D has 40 pixels and shares 35 with A. Its IoU with A is $35/45$, approximately 0.778.
-At confidence 0.70, D is removed as a duplicate before pixel assignment. Figure~\ref{fig:worked} shows these operations on a small grid.
+The remaining masks can still touch or overlap around their edges. We assign shared pixels to the mask with higher confidence.
+A lower-confidence mask keeps its remaining pixels, provided that at least five remain.
+The result gives each pixel to at most one filament.
 
 
-\begin{figure}[t]
-\centering\includegraphics[width=\linewidth]{mask-worked.png}
-\caption{A small mask example. A and B describe nearby regions. D duplicates A. The final grid gives shared pixels to A.}
-\Description{Three colored pixel-grid panels show candidate masks A and B, duplicate D, and the separate final pixel assignments.}
-\label{fig:worked}
-\end{figure}
-
-\subsection{Encode and check the output}
-Pycocotools converts each final mask to compressed COCO run-length encoding, or RLE.
-RLE stores runs of pixels rather than listing all pixel values.
-The CSV has two fields: \path{filament_id} and \path{segmentation_rle}. Each predicted filament receives one row and a unique identifier.
-
-
-Output checks decode the masks and confirm their 2048 by 2048 dimensions, nonempty regions, identifiers, and pixel separation.
-An image with no predicted filament produces no rows. The pipeline still records that the image was processed.
-These checks make the encoded output suitable for the competition's instance evaluation.
-
-
-\subsection{Training record and optional learning path}
-The submitted networks use the released weights. Their declared training source contains 707 observations, 1,154 annotator records, and 8,199 masks.
-Recorded training settings include image dimension 2048, batch size 8, MuSGD, initial learning rate 0.001, and weight decay 0.0001.
-The maximum epochs are 500 and 300, with early stopping patience of 25 and 30 for YOLO26x and YOLOv8x.
-
-
-The stored arguments also describe rotation, translation, scaling, shear, and horizontal and vertical flips.
-\path{provenance.json} records the complete recovered argument lists.
-This distinguishes the training configuration from the fixed prediction settings explained above.
-
-For readers who want to train a new model, the notebook includes an optional procedure in \path{train.py}.
-It exports the supplied instance polygons into one filament class and starts from the recorded architecture.
-It groups every annotator record of an observation into the same data split.
-
-
-A fixed SHA256 ordering assigns 566 observations to training and 141 to validation. Grouping prevents copies of one observation from entering both sets.
-The optional procedure records its seed, optimizer, augmentation settings, and split manifest. It is a new training recipe, distinct from the released weights' history.
-The default notebook path loads the stored final weights and runs inference.
-
-
-\section{Evaluation}\label{sec:evaluation}
-\subsection{Final competition result}
-The selected submission, 58351849, has a displayed public Panoptic Quality score of 0.40.
-The pipeline processed all 180 supplied test images. It produced 1,317 masks in 178 images, with two images having no masks.
-Every output pixel belongs to at most one predicted instance.
-
-
-A second complete notebook execution reproduced the submitted CSV byte for byte on Apple MPS.
-The file hash and validation receipt are included in our package. The displayed public score describes the public leaderboard portion of the test set.
-The private score remains unavailable.
-
-
-\subsection{Read the diagnostic measures}
-Panoptic Quality, or PQ, combines finding the correct instances with matching their shapes.
-A matched pair has IoU above 0.5. An extra prediction is a false positive; a missed reference instance is a false negative.
-The score divides the sum of matched IoUs by $TP+0.5FP+0.5FN$.
-
-
-Dice and IoU also describe overlap between the union of predicted pixels and an annotator's union mask.
-We report their means and per-record distributions in the evaluation output.
-One-to-many counts describe a reference instance split across several predictions. Many-to-one counts describe predictions that merge reference instances.
-
-
-\subsection{Final method and component baselines}
-We compare the final configuration with each individual model on a fixed diagnostic set.
-It contains 12 official training observations and their 17 annotator records. The selection rule sorts observation names by \texttt{SHA256(final-method-diagnostics-v1:name)}.
-This rule selects the examples before inference scores are available.
-
-
-These are training-set diagnostics because the released weights have seen the training observations. They illustrate behavior and do not estimate held-out performance.
-The evaluator scores each annotator record with the observation's predictions, following the host self-evaluation notebook~\cite{hosteval}.
-PQ counts are pooled across those records.
+Consider two masks that contain 40 and 30 pixels and share 10 pixels. Their IoU is $10/(40+30-10)$, or about 0.17.
+Both remain after duplicate removal. When the first mask claims the shared region, the second retains 20 pixels.
+This illustrates how two nearby detections can become separate final masks.
 
 
 \begin{table}[t]
-\caption{Fixed training-set diagnostics. Dice and IoU are mean binary-mask scores. PQ intervals show observation sampling uncertainty.}
+\caption{Fixed prediction settings. These choices determine which regions enter the final segmentation.}
+\centering\small
+\begin{tabular}{lc}\toprule
+Setting & Value\\\midrule
+Image dimensions & $2048\times2048$ pixels\\
+Minimum confidence & 0.5\\
+Maximum proposals per model & 100\\
+Box-overlap setting & 0.0\\
+Mask-overlap threshold & 0.5\\
+Minimum remaining area & 5 pixels\\\bottomrule
+\end{tabular}
+\end{table}
+
+The final duplicate-removal step compares the masks themselves, using the threshold explained above.
+The accepted masks are saved in the competition's required format, with one row for each predicted filament.
+
+\section{Evaluation}\label{sec:evaluation}
+\subsection{What makes a useful segmentation?}
+A useful segmentation identifies the right objects and describes their shapes accurately.
+Missing a faint filament is a detection error. Drawing the boundary too narrowly is a shape error.
+Splitting one filament into several pieces or joining neighboring filaments can affect both properties.
+
+
+Panoptic Quality, or PQ, combines detection and shape agreement. A prediction matches a reference mask when their IoU exceeds 0.5.
+The score rewards overlap in matched pairs and includes penalties for extra predictions and missed reference filaments.
+This makes it more informative than measuring only the brightness or area of a predicted region.
+
+
+Dice and IoU provide additional descriptions of pixel overlap. Here, their binary-mask values compare all predicted filament pixels with an observer's outlined filament pixels.
+We also count splitting and merging cases to examine whether the method preserves individual objects.
+These measures complement visual inspection of the solar images.
+
+
+\subsection{Final competition result}
+The final method processed all 180 supplied test images and produced 1,317 masks.
+It found filament regions in 178 images; two images had no predicted regions.
+Its displayed public PQ score is 0.40. This score concerns the public portion of the test set.
+
+
+A complete repeat of the calculation reproduced the submitted predictions exactly in the recorded environment.
+The source notebook, stored models, and full implementation details are available in our own repository.\footnote{\url{https://github.com/shepsci/filament-segmentation-2026-final}}
+The accompanying documentation contains the software settings and instructions needed to repeat the analysis.
+
+
+\subsection{A closer look at the final method}
+To examine the method's behavior, we use a fixed set of 12 official training observations with 17 observer annotation records.
+The observations were selected by a fixed rule before their prediction scores were calculated.
+We compare the combined result with each individual model on exactly this set.
+
+
+These observations were part of the released models' training source, so the results describe training-set behavior rather than independent test performance.
+Each observer's outlines are evaluated separately, following the competition's self-evaluation procedure~\cite{hosteval}.
+This retains the variation between different human descriptions of the same solar image.
+
+
+\begin{table}[t]
+\caption{Comparison on the fixed training examples. Dice and IoU are mean binary-mask scores. Intervals summarize uncertainty across observations.}
 \label{tab:diagnostics}
 \centering\small
 \begin{tabular}{lccc}\toprule
 Method & PQ [95\% interval] & Dice & IoU\\\midrule
 YOLO26x & 0.488 [0.396, 0.565] & .565 & .432\\
 YOLOv8x & 0.517 [0.418, 0.626] & .615 & .474\\
-Final ensemble & 0.531 [0.448, 0.619] & .687 & .538\\\bottomrule
+Combined & 0.531 [0.448, 0.619] & .687 & .538\\\bottomrule
 \end{tabular}
 \end{table}
 
-The final method matches 98 reference pairs, compared with 77 and 90 for the individual models.
-It has 30 extra predictions and 34 missed instances. The individual models have 10/55 and 26/42 extra/missed instances.
-These counts show the coverage tradeoff when combining detections.
+The combined method matches 98 reference pairs, compared with 77 and 90 for the individual models.
+It misses 34 reference instances, compared with 55 and 42. It also produces 30 extra detections, compared with 10 and 26.
+The comparison illustrates a common tradeoff: finding more filaments can also introduce more false detections.
 
 
-The final matched-instance IoU has mean 0.704 and median 0.721. Its 10th and 90th percentiles are 0.585 and 0.804.
-At a diagnostic overlap threshold of 0.1, the result has zero one-to-many cases and three many-to-one cases.
-This lower threshold describes partial overlaps that can reveal splitting and merging.
+For matched instances, the combined method has mean IoU of 0.704 and median IoU of 0.721.
+Its 10th and 90th percentiles are 0.585 and 0.804. This spread shows that boundary agreement varies across detected filaments.
+Using a lower diagnostic overlap threshold of 0.1, we find zero splitting cases and three merging cases.
 
 
-Confidence intervals use 2,000 bootstrap samples with seed 3407. Each sample resamples whole observations and keeps their annotator records together.
-This respects the shared image behind multiple annotation records. The interval describes sample variability; training reuse still limits generalization claims.
-The evaluation module and recorded metrics reproduce these calculations.
+The uncertainty intervals come from 2,000 repeated samples of the observations.
+All annotation records for an observation stay together when it is sampled.
+This accounts for the shared image behind different human outlines, while the small training sample limits broader conclusions.
 
 
 
 
-\subsection{Strengths, limits, and reuse}
-Combining two models can recover candidates found by either network. Mask suppression reduces duplicates, while pixel assignment preserves separate output instances.
-Figure~\ref{fig:examples} shows how predicted boundaries compare with supplied annotations.
-The examples include both agreements and differences.
+\subsection{Interpreting the solar images}
+Figure~\ref{fig:examples} connects the numerical scores with visible structures.
+Agreement between the contours indicates that the model and observer identify a similar filament region.
+Differences can reveal a missed extension, an extra dark region, or disagreement about where a faint boundary ends.
 
 
-Small or faint filaments can be missed. Nearby instances can merge, and extra candidates can increase the false-positive count.
-The fixed diagnostic set is small, so its results should be read with the uncertainty intervals.
-A useful next step is observation-grouped validation of a newly trained model, with explicit attention to boundaries and merged instances.
+The combined approach can retain a filament identified by either model. Removing duplicate regions then produces a clearer description of individual objects.
+Its main limitations remain faint structures, uncertain boundaries, and nearby regions that can merge into one prediction.
+These are both image-analysis challenges and practical questions about how a solar filament should be outlined.
 
 
-The recorded environment uses Python 3.12.12, Ultralytics 8.4.212, PyTorch 2.13.0, torchvision 0.28.0, and NumPy 2.5.2.
-It uses OpenCV 5.0.0.93 and pycocotools 2.0.11. \path{requirements.txt} lists all package versions.
-Exact replay was verified on Apple MPS. Numerical differences near thresholds can change results on other hardware.
-
-
-Readers can use the notebook in three ways: reproduce the final predictions, inspect diagnostic measures, or learn the optional new training workflow.
-Reusable modules implement inference, evaluation, and training. The notebook explains their inputs, numerical decisions, and outputs.
-All prediction dependencies are stored in our repository. The official competition distribution supplies the image inputs.
+Further work can examine thin extensions and crowded regions more closely, using observations kept separate from model training.
+Segmentation quality depends on more than recognizing a dark feature.
+It also depends on preserving the structure's boundary and its identity as one solar object.
 
 
 \section{Acknowledgment}\label{sec:acknowledgment}
